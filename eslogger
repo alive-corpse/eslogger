@@ -1,0 +1,125 @@
+#!/bin/sh
+#
+# Simple logger shell tool by Evgeniy Shumilov <evgeniy.shumilov@gmail.com>
+#
+# Level priority: FATAL ERROR -> ERROR -> WARNING -> NOTICE -> INFO -> DEBUG
+#
+
+LOGGERPREF=`dirname $0`
+if [ -f "$LOGGERPREF/../etc/logger.conf" ]; then
+    . "$LOGGERPREF/../etc/logger.conf"
+else
+    #LOGLEVEL='info' # debug/info/warinig
+    LOGLEVEL='debug'
+    LPREF='date +%Y.%m.%d-%H:%M:%S'
+    DEFAULT_COLS=70 # If tput program is not exist
+    LCOLOR=1 # 0/1
+fi
+
+c='[0m'
+l0='[1;30;49m'
+l1='[1;31;49m'
+l2='[1;32;49m'
+l3='[1;33;49m'
+l4='[1;34;49m'
+l5='[1;35;49m'
+l6='[1;36;49m'
+l7='[1;37;49m'
+d0='[0;30;49m'
+d1='[0;31;49m'
+d2='[0;32;49m'
+d3='[0;33;49m'
+d4='[0;34;49m'
+d5='[0;35;49m'
+d6='[0;36;49m'
+d7='[0;37;49m'
+
+# DIV function
+dv=''
+d() {
+    if [ -z "$dv" ]; then
+        [ -n "$(which tput)" ] && COLS=`tput cols` || COLS="$DEFAULT_COLS"
+        cnt=`echo "$COLS" | awk '{ print $1/2 }'`
+        [ "$LCOLOR" = "1" ] && tpl="$l1""=""$l3""-" || tpl='=-'
+        for i in `seq 1 "$cnt"`; do
+            dv="$(echo "$dv$tpl")"
+        done
+        [ "$LCOLOR" = "1" ] && dv="$(echo "$dv$c")"
+    fi
+    echo "$dv"
+}
+
+# Logging function
+l() {
+    [ -z "$LPREF" ] && LPREF='date +%Y.%m.%d-%H:%M:%S'
+    if [ -n "$2" ]; then
+        case "$1" in
+            d)
+                if [ "$LOGLEVEL" = "debug" ]; then
+                    b=''; e=''; [ "$LCOLOR" = "1" ] && b="$d4" && e="$c"
+                    echo "$b"`$LPREF`"   DEBUG: $2$e"
+                fi
+            ;;
+            i)
+                if [ "$LOGLEVEL" = "debug" ] || [ "$LOGLEVEL" = "info" ]; then
+                    b=''; e=''; [ "$LCOLOR" = "1" ] && b="$d2" && e="$c"
+                    echo "$b"`$LPREF`"    INFO: $2$e"
+                fi
+            ;;
+            n)
+                if [ "$LOGLEVEL" = "debug" ] || [ "$LOGLEVEL" = "info" ] || [ "$LOGLEVEL" = "notice" ]; then
+                    b=''; e=''; [ "$LCOLOR" = "1" ] && b="$l2" && e="$c"
+                    echo "$b"`$LPREF`"  NOTICE: $2$e"
+                fi
+            ;;
+            w)
+                if [ "$LOGLEVEL" = "debug" ] || [ "$LOGLEVEL" = "info" ] || [ "$LOGLEVEL" = "warning" ] || [ "$LOGLEVEL" = "notice" ]; then
+                    b=''; e=''; [ "$LCOLOR" = "1" ] && b="$d3" && e="$c"
+                    echo "$b"`$LPREF`" WARNING: $2$e"
+                fi
+            ;;
+            e)
+                b=''; e=''; [ "$LCOLOR" = "1" ] && b="$d1" && e="$c"
+                echo "$b"`$LPREF`"   ERROR: $2$e"
+            ;;
+            f)
+                b=''; e=''; [ "$LCOLOR" = "1" ] && b="$l1" && e="$c"
+                echo "$b"`$LPREF`"   FATAL: $2$e"
+            ;;
+            fe)
+                b=''; e=''; [ "$LCOLOR" = "1" ] && b="$l1" && e="$c"
+                echo "$b"`$LPREF`"   FATAL: $2$e"
+                b=''; e=''; [ "$LCOLOR" = "1" ] && b="$d2" && e="$c"
+                echo "$b"`$LPREF`"    INFO: All next operations will be cancelled...$e"
+                [ -n "$3" ] && exit $3 || exit 1
+            ;;
+        esac
+    else
+        case "$1" in
+            fe)
+                b=''; e=''; [ "$LCOLOR" = "1" ] && b="$l1" && e="$c"
+                echo "$b"`$LPREF`" FATAL: Not enough parameters.$e"
+                b=''; e=''; [ "$LCOLOR" = "1" ] && b="$d2" && e="$c"
+                echo "$b"`$LPREF`" INFO: All next operations will be cancelled...$e"
+                exit 1
+            ;;
+            *)
+                l i "$1"
+            ;;
+        esac
+    fi
+}
+
+# Logger test function
+lt() {
+    d
+    l d "debug message:   l d \"message\""
+    l i "info message:    l i \"message\""
+    l n "notice message:  l n \"message\""
+    l w "warning message: l w \"message\""
+    l e "error message:   l e \"message\""
+    l f "fatal message:   l f \"message\""
+}
+
+[ "$1" = "t" ] && lt
+
